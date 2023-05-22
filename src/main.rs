@@ -8,11 +8,13 @@ use std::{
 
 use futures::{
   future::{self, Either},
-  pin_mut, SinkExt, StreamExt, TryStreamExt,
+  pin_mut, StreamExt, TryStreamExt,
 };
 
+use sender_sink::wrappers::UnboundedSenderSink;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_tungstenite::{
   accept_hdr_async,
   tungstenite::{
@@ -30,9 +32,8 @@ mod transmit;
 use client::Client;
 use room::Room;
 
-use crate::{action::RoomExecute, transmit::TransmitExecute};
+use crate::message::{MessageExecute, ResponseMessage};
 
-type Tx = UnboundedSender<Message>;
 type PeerMap = Arc<Mutex<HashMap<String, Client>>>;
 type RoomMap = Arc<Mutex<HashMap<String, Room>>>;
 
@@ -59,51 +60,34 @@ async fn handle_connection(
     .expect("Error during the websocket handshake occurred");
   println!("WebSocket connection established: {}", addr);
 
-  let (tx, mut rx) = unbounded_channel();
+  let (tx, rx) = unbounded_channel();
   let client = Client::new(addr, "test".to_owned(), tx);
   let uuid_key = client.uuid();
 
   peer_map.lock().unwrap().insert(uuid_key.clone(), client);
 
-  let (mut sink, stream) = ws_stream.split();
+  let (sink, stream) = ws_stream.split();
 
-  let (inner_tx, mut inner_rx) = unbounded_channel::<Message>();
+  let (transform_tx, transform_rx) = unbounded_channel::<Message>();
 
-  let incoming_tx = inner_tx.clone();
-  let broadcast_incoming = stream.try_for_each(|msg| {
-    match serde_json::from_str(msg.to_text().unwrap()) {
+  let message_tx = transform_tx.clone();
+  let execute_message = stream.try_for_each(|msg| {
+    match serde_json::from_str::<message::Message>(msg.to_text().unwrap()) {
       Ok(message) => {
         println!(
           "Received a message from {}: {}",
           addr,
           msg.to_text().unwrap()
         );
-        match message {
-          message::Message::Action(action) => match action {
-            action::Action::CreateRoom(create_room) => {
-              create_room.execute(room_map.clone());
-            }
-          },
-          message::Message::Transmit(transmit) => match transmit {
-            transmit::Transmit::Broadcast(broadcast) => {
-              broadcast.execute(peer_map.clone());
-            }
-            transmit::Transmit::Unicast(unicast) => {
-              unicast.execute(peer_map.clone());
-            }
-          },
-        };
+        message.execute(peer_map.clone(), room_map.clone());
       }
       Err(_) => {
-        println!("error message");
-        incoming_tx
-          .send(Message::Text(
-            serde_json::to_string(&message::ResponseMessage {
-              state: message::State::error,
-              message: "contracture".to_owned(),
-            })
-            .unwrap(),
-          ))
+        message_tx
+          .send(
+            ResponseMessage::new(message::State::error, "construct".to_owned())
+              .try_into()
+              .unwrap(),
+          )
           .unwrap();
       }
     };
@@ -111,25 +95,28 @@ async fn handle_connection(
     future::ok(())
   });
 
-  tokio::spawn(async move {
-    while let Some(message) = inner_rx.recv().await {
-      sink.send(message).await.unwrap();
-    }
-  });
+  let transform_task = UnboundedReceiverStream::new(transform_rx)
+    .map(Ok)
+    .forward(sink);
 
-  // let receive_from_others = UnboundedReceiverStream::new(rx).map(Ok).forward(sink);
-  let cast_tx = inner_tx.clone();
-  let receive_from_others = async move {
-    while let Some(message) = rx.recv().await {
-      cast_tx.send(message).unwrap();
-    }
-  };
+  let receive_tx = transform_tx.clone();
+  let receive_from_others = UnboundedReceiverStream::new(rx)
+    .map(Ok)
+    .forward(UnboundedSenderSink::from(receive_tx));
 
-  pin_mut!(broadcast_incoming, receive_from_others);
-  match future::select(broadcast_incoming, receive_from_others).await {
-    Either::Left((value1, _)) => println!("broadcast {:?}", value1),
+  pin_mut!(execute_message, receive_from_others, transform_task);
+  match future::select(
+    future::select(execute_message, receive_from_others),
+    transform_task,
+  )
+  .await
+  {
+    Either::Left((value, _)) => match value {
+      Either::Left((value1, _)) => println!("broadcast {:?}", value1),
+      Either::Right((value2, _)) => println!("receive {:?}", value2),
+    },
     Either::Right((value2, _)) => println!("receive {:?}", value2),
-  };
+  }
 
   println!("{} disconnected", &addr);
   peer_map.lock().unwrap().remove(&uuid_key);
