@@ -13,7 +13,7 @@ use futures::{
 
 use sender_sink::wrappers::UnboundedSenderSink;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc::{unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_tungstenite::{
   accept_hdr_async,
@@ -72,25 +72,19 @@ async fn handle_connection(
 
   let message_tx = transform_tx.clone();
   let execute_message = stream.try_for_each(|msg| {
-    match serde_json::from_str::<message::Message>(msg.to_text().unwrap()) {
+    let message = match serde_json::from_str::<message::Message>(msg.to_text().unwrap()) {
       Ok(message) => {
         println!(
           "Received a message from {}: {}",
           addr,
           msg.to_text().unwrap()
         );
-        message.execute(peer_map.clone(), room_map.clone());
+        message.execute(peer_map.clone(), room_map.clone())
       }
-      Err(_) => {
-        message_tx
-          .send(
-            ResponseMessage::new(message::State::error, "construct".to_owned())
-              .try_into()
-              .unwrap(),
-          )
-          .unwrap();
-      }
+      Err(_) => ResponseMessage::new(message::State::error, "construct".to_owned()),
     };
+
+    message_tx.send(message.try_into().unwrap()).unwrap();
 
     future::ok(())
   });

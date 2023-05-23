@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite;
 
-use crate::action::{Action, RoomExecute};
+use crate::action::{Action, ActionExecute};
 use crate::transmit::{Transmit, TransmitExecute};
 use crate::{PeerMap, RoomMap};
 
@@ -27,6 +27,9 @@ impl ResponseMessage {
   pub fn new(state: State, message: String) -> ResponseMessage {
     ResponseMessage { state, message }
   }
+  pub fn message(state: State, message: String) -> Result<tungstenite::Message, serde_json::Error> {
+    ResponseMessage::new(state, message).try_into()
+  }
 }
 
 impl TryInto<tungstenite::Message> for ResponseMessage {
@@ -37,25 +40,14 @@ impl TryInto<tungstenite::Message> for ResponseMessage {
 }
 
 impl MessageExecute for Message {
-  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) {
+  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) -> ResponseMessage {
     match self {
-      Message::Action(action) => match action {
-        Action::CreateRoom(create_room) => {
-          create_room.execute(room_map.clone());
-        }
-      },
-      Message::Transmit(transmit) => match transmit {
-        Transmit::Broadcast(broadcast) => {
-          broadcast.execute(peer_map.clone());
-        }
-        Transmit::Unicast(unicast) => {
-          unicast.execute(peer_map.clone());
-        }
-      },
-    };
+      Message::Action(action) =>  action.execute(room_map.clone()),
+      Message::Transmit(transmit) => transmit.execute(peer_map.clone()),
+    }
   }
 }
 
 pub trait MessageExecute {
-  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) {}
+  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) -> ResponseMessage;
 }

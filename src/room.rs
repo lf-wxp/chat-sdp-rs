@@ -1,7 +1,7 @@
 use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]  
+#[derive(Serialize, Deserialize, Clone)]  
 pub struct  Room {
   desc: Option<String>,
 	users: Vec<String>,
