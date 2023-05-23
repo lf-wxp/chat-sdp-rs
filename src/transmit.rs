@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{PeerMap, message::{ResponseMessage, State}};
+use crate::{PeerMap, response::{ResponseMessage, State}};
 
 #[derive(Serialize, Deserialize)]
 pub struct Broadcast {
@@ -35,7 +35,7 @@ impl TransmitExecute for Broadcast {
       };
     }
 
-    ResponseMessage::new(State::success, "ok broadcast".to_owned())
+    ResponseMessage::new(State::success, "ok broadcast".to_owned(), None)
   }
 }
 
@@ -48,7 +48,7 @@ impl TransmitExecute for Unicast {
       .send(Message::Text(self.message.clone()))
       .unwrap();
 
-    ResponseMessage::new(State::success, "ok unicast".to_owned())
+    ResponseMessage::new(State::success, "ok unicast".to_owned(), None)
   }
 }
 

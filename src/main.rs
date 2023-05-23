@@ -28,11 +28,12 @@ mod client;
 mod message;
 mod room;
 mod transmit;
+mod response;
 
 use client::Client;
 use room::Room;
-
-use crate::message::{MessageExecute, ResponseMessage};
+use message::{MessageExecute};
+use response::{ResponseMessage, State};
 
 type PeerMap = Arc<Mutex<HashMap<String, Client>>>;
 type RoomMap = Arc<Mutex<HashMap<String, Room>>>;
@@ -81,7 +82,7 @@ async fn handle_connection(
         );
         message.execute(peer_map.clone(), room_map.clone())
       }
-      Err(_) => ResponseMessage::new(message::State::error, "construct".to_owned()),
+      Err(_) => ResponseMessage::new(State::error, "construct".to_owned(), None),
     };
 
     message_tx.send(message.try_into().unwrap()).unwrap();

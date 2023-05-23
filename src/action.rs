@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::message::{ResponseMessage, State};
-use crate::room::Room;
-use crate::RoomMap;
+use crate::{RoomMap, response::{State, ResponseMessage, Data}, room::Room};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateRoom {
@@ -17,7 +15,14 @@ pub struct RemoveRoom {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ListRoom;
+pub struct ListRoom; 
+
+#[derive(Serialize, Deserialize)]
+pub struct ListRoomResponse {
+  state: State,
+  message: String,
+  data: Vec<Room>,
+}
 
 impl RoomExecute for CreateRoom {
   fn execute(&self, room_map: RoomMap) -> ResponseMessage {
@@ -26,18 +31,16 @@ impl RoomExecute for CreateRoom {
       self.desc.to_owned(),
       self.passwd.to_owned(),
     );
-    match room_map.lock().unwrap().insert(room.uuid(), room) {
-      Some(_) => ResponseMessage::new(State::success, "success".to_owned()),
-      None => ResponseMessage::new(State::error, "error".to_owned()),
-    }
+    room_map.lock().unwrap().insert(room.uuid(), room);
+    ResponseMessage::new(State::success, "success".to_owned(), None)
   }
 }
 
 impl RoomExecute for RemoveRoom {
   fn execute(&self, room_map: RoomMap) -> ResponseMessage {
     match room_map.lock().unwrap().remove(&self.uuid) {
-      Some(_) => ResponseMessage::new(State::success, "success".to_owned()),
-      None => ResponseMessage::new(State::error, "error".to_owned()),
+      Some(_) => ResponseMessage::new(State::success, "success".to_owned(), None),
+      None => ResponseMessage::new(State::error, "error remove room".to_owned(), None),
     }
   }
 }
@@ -47,10 +50,10 @@ impl RoomExecute for ListRoom {
     match room_map.lock() {
       Ok(map) => {
         let list = map.values().cloned().collect::<Vec<Room>>();
-        ResponseMessage::new(State::success, "success".to_owned())
+        ResponseMessage::new(State::success, "success".to_owned(), Some(Data::RoomList(list)))
       },
       Err(_) => {
-        ResponseMessage::new(State::error, "error".to_owned())
+        ResponseMessage::new(State::error, "error list room".to_owned(), None)
       },
     }
   }
