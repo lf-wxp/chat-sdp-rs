@@ -10,6 +10,7 @@ pub enum State {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Data {
   RoomList(Vec<Room>),
 }

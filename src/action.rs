@@ -60,6 +60,7 @@ impl RoomExecute for ListRoom {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Action {
   CreateRoom(CreateRoom),
   RemoveRoom(RemoveRoom),

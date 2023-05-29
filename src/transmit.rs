@@ -53,6 +53,7 @@ impl TransmitExecute for Unicast {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Transmit {
   Broadcast(Broadcast),
   Unicast(Unicast),

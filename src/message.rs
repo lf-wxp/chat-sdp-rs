@@ -6,6 +6,7 @@ use crate::transmit::{Transmit, TransmitExecute};
 use crate::{PeerMap, RoomMap};
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Message {
   Action(Action),
   Transmit(Transmit),
