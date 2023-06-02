@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{PeerMap, response::{ResponseMessage, State}};
+use crate::{ClientMap, response::{ResponseMessage, State}};
 
 #[derive(Serialize, Deserialize)]
 pub struct Broadcast {
@@ -17,8 +17,8 @@ pub struct Unicast {
 }
 
 impl TransmitExecute for Broadcast {
-  fn execute(&self, peer_map: PeerMap) -> ResponseMessage {
-    let peers = peer_map.lock().unwrap();
+  fn execute(&self, client_map: ClientMap) -> ResponseMessage {
+    let peers = client_map.lock().unwrap();
     let broadcast_recipients = peers
       .iter()
       .filter(|(uuid, _)| uuid != &&self.from)
@@ -40,8 +40,8 @@ impl TransmitExecute for Broadcast {
 }
 
 impl TransmitExecute for Unicast {
-  fn execute(&self, peer_map: PeerMap) -> ResponseMessage {
-    let peers = peer_map.lock().unwrap();
+  fn execute(&self, client_map: ClientMap) -> ResponseMessage {
+    let peers = client_map.lock().unwrap();
     let target_peer = peers.get(&self.to).unwrap();
     target_peer
       .tx
@@ -60,18 +60,18 @@ pub enum Transmit {
 }
 
 impl TransmitExecute for Transmit {
-  fn execute(&self, peer_map: PeerMap) -> ResponseMessage {
+  fn execute(&self, client_map: ClientMap) -> ResponseMessage {
     match self {
       Transmit::Broadcast(broadcast) => {
-        broadcast.execute(peer_map)
+        broadcast.execute(client_map)
       }
       Transmit::Unicast(unicast) => {
-        unicast.execute(peer_map)
+        unicast.execute(client_map)
       }
     }
   }
 }
 
 pub trait TransmitExecute {
-  fn execute(&self, peer_map: PeerMap) -> ResponseMessage;
+  fn execute(&self, client_map: ClientMap) -> ResponseMessage;
 }

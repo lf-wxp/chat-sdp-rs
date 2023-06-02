@@ -1,86 +1,31 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{RoomMap, response::{State, ResponseMessage, Data}, room::Room};
-
-#[derive(Serialize, Deserialize)]
-pub struct CreateRoom {
-  name: String,
-  desc: Option<String>,
-  passwd: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct RemoveRoom {
-  uuid: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ListRoom; 
-
-#[derive(Serialize, Deserialize)]
-pub struct ListRoomResponse {
-  state: State,
-  message: String,
-  data: Vec<Room>,
-}
-
-impl RoomExecute for CreateRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
-    let room = Room::new(
-      self.name.to_owned(),
-      self.desc.to_owned(),
-      self.passwd.to_owned(),
-    );
-    room_map.lock().unwrap().insert(room.uuid(), room);
-    ResponseMessage::new(State::success, "success".to_owned(), None)
-  }
-}
-
-impl RoomExecute for RemoveRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
-    match room_map.lock().unwrap().remove(&self.uuid) {
-      Some(_) => ResponseMessage::new(State::success, "success".to_owned(), None),
-      None => ResponseMessage::new(State::error, "error remove room".to_owned(), None),
-    }
-  }
-}
-
-impl RoomExecute for ListRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
-    match room_map.lock() {
-      Ok(map) => {
-        let list = map.values().cloned().collect::<Vec<Room>>();
-        ResponseMessage::new(State::success, "success".to_owned(), Some(Data::RoomList(list)))
-      },
-      Err(_) => {
-        ResponseMessage::new(State::error, "error list room".to_owned(), None)
-      },
-    }
-  }
-}
+use crate::response::ResponseMessage;
+use crate::{room, ClientMap};
+use crate::{client, RoomMap};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
-  CreateRoom(CreateRoom),
-  RemoveRoom(RemoveRoom),
-  ListRoom(ListRoom),
+  Room(room::action::Action),
+  Client(client::action::Action),
 }
 
-impl ActionExecute for Action {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
+impl Execute for Action {
+  fn execute(&self, room_map: RoomMap, client_map: ClientMap, client_id: String) -> ResponseMessage {
     match self {
-      Action::CreateRoom(create_room) => create_room.execute(room_map.clone()),
-      Action::RemoveRoom(remove_room) => remove_room.execute(room_map.clone()),
-      Action::ListRoom(list_room) => list_room.execute(room_map.clone()),
+      Action::Room(room_action) => match room_action {
+        room::action::Action::CreateRoom(create_room) => room::action::Execute::execute(create_room, room_map.clone()),
+        room::action::Action::RemoveRoom(remove_room) => room::action::Execute::execute(remove_room, room_map.clone()),
+        room::action::Action::ListRoom(list_room) => room::action::Execute::execute(list_room, room_map.clone()),
+      },
+      Action::Client(client_action) => match client_action {
+        client::action::Action::UpdateName(update_name) => client::action::Execute::execute(update_name, client_map.clone(), client_id),
+        client::action::Action::ListClient(list_client) => client::action::Execute::execute(list_client, client_map.clone(), client_id)
+      },
     }
   }
 }
-
-pub trait RoomExecute {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage;
-}
-
-pub trait ActionExecute {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage;
+pub trait Execute {
+  fn execute(&self, room_map: RoomMap, client_map: ClientMap, client_id: String) -> ResponseMessage;
 }

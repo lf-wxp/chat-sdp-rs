@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::action::{Action, ActionExecute};
+use crate::action::{Action, self};
+use crate::client::client::Client;
 use crate::response::ResponseMessage;
 use crate::transmit::{Transmit, TransmitExecute};
-use crate::{PeerMap, RoomMap};
+use crate::{ClientMap, RoomMap};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,15 +13,15 @@ pub enum Message {
   Transmit(Transmit),
 }
 
-impl MessageExecute for Message {
-  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) -> ResponseMessage {
+impl Execute for Message {
+  fn execute(&self, client_map: ClientMap, room_map: RoomMap, client_id: String) -> ResponseMessage {
     match self {
-      Message::Action(action) => action.execute(room_map.clone()),
-      Message::Transmit(transmit) => transmit.execute(peer_map.clone()),
+      Message::Action(action) => action::Execute::execute(action, room_map.clone(), client_map.clone(), client_id),
+      Message::Transmit(transmit) => transmit.execute(client_map.clone()),
     }
   }
 }
 
-pub trait MessageExecute {
-  fn execute(&self, peer_map: PeerMap, room_map: RoomMap) -> ResponseMessage;
+pub trait Execute {
+  fn execute(&self, client_map: ClientMap, room_map: RoomMap, client_id: String) -> ResponseMessage;
 }

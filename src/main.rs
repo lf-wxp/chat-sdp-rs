@@ -30,16 +30,16 @@ mod room;
 mod transmit;
 mod response;
 
-use client::Client;
-use room::Room;
-use message::{MessageExecute};
+use client::client::Client;
+use room::room::Room;
+use message::Execute;
 use response::{ResponseMessage, State};
 
-type PeerMap = Arc<Mutex<HashMap<String, Client>>>;
+type ClientMap = Arc<Mutex<HashMap<String, Client>>>;
 type RoomMap = Arc<Mutex<HashMap<String, Room>>>;
 
 async fn handle_connection(
-  peer_map: PeerMap,
+  client_map: ClientMap,
   room_map: RoomMap,
   raw_stream: TcpStream,
   addr: SocketAddr,
@@ -65,7 +65,7 @@ async fn handle_connection(
   let client = Client::new(addr, "test".to_owned(), tx);
   let uuid_key = client.uuid();
 
-  peer_map.lock().unwrap().insert(uuid_key.clone(), client);
+  client_map.lock().unwrap().insert(uuid_key.clone(), client);
 
   let (sink, stream) = ws_stream.split();
 
@@ -80,7 +80,7 @@ async fn handle_connection(
           addr,
           msg.to_text().unwrap()
         );
-        message.execute(peer_map.clone(), room_map.clone())
+        message.execute(client_map.clone(), room_map.clone(), uuid_key.clone())
       }
       Err(_) => ResponseMessage::new(State::error, "construct".to_owned(), None),
     };
@@ -114,7 +114,7 @@ async fn handle_connection(
   }
 
   println!("{} disconnected", &addr);
-  peer_map.lock().unwrap().remove(&uuid_key);
+  client_map.lock().unwrap().remove(&uuid_key);
 }
 
 #[tokio::main]
@@ -123,7 +123,7 @@ async fn main() -> Result<(), IoError> {
     .nth(1)
     .unwrap_or_else(|| "127.0.0.1:8080".to_string());
 
-  let peer_map = PeerMap::new(Mutex::new(HashMap::new()));
+  let client_map = ClientMap::new(Mutex::new(HashMap::new()));
   let room_map = RoomMap::new(Mutex::new(HashMap::new()));
 
   let try_socket = TcpListener::bind(&addr).await;
@@ -132,7 +132,7 @@ async fn main() -> Result<(), IoError> {
 
   while let Ok((stream, addr)) = listener.accept().await {
     tokio::spawn(handle_connection(
-      peer_map.clone(),
+      client_map.clone(),
       room_map.clone(),
       stream,
       addr,

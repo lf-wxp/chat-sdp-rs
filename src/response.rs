@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite;
 
-use crate::room::Room;
+use crate::{room::room::Room};
+use crate::client::client::ClientInfo;
 
 #[derive(Serialize, Deserialize)]
 pub enum State {
@@ -13,6 +14,7 @@ pub enum State {
 #[serde(rename_all = "camelCase")]
 pub enum Data {
   RoomList(Vec<Room>),
+  ClientList(Vec<ClientInfo>),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -24,7 +26,11 @@ pub struct ResponseMessage {
 
 impl ResponseMessage {
   pub fn new(state: State, message: String, data: Option<Data>) -> ResponseMessage {
-    ResponseMessage { state, message, data }
+    ResponseMessage {
+      state,
+      message,
+      data,
+    }
   }
 }
 
