@@ -62,7 +62,7 @@ async fn handle_connection(
   println!("WebSocket connection established: {}", addr);
 
   let (tx, rx) = unbounded_channel();
-  let client = Client::new(addr, "test".to_owned(), tx);
+  let client = Client::new(addr, None, tx);
   let uuid_key = client.uuid();
 
   client_map.lock().unwrap().insert(uuid_key.clone(), client);

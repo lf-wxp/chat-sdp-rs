@@ -1,7 +1,8 @@
-use std::{net::SocketAddr, error::Error};
+use std::{net::SocketAddr};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_tungstenite::tungstenite::Message;
+use nanoid::nanoid;
 
 type Tx = UnboundedSender<Message>;
 
@@ -13,7 +14,8 @@ pub struct Client {
 }
 
 impl Client {
-  pub fn new(addr: SocketAddr, name: String, tx: Tx) -> Client {
+  pub fn new(addr: SocketAddr, name: Option<String>, tx: Tx) -> Client {
+    let name = name.unwrap_or(nanoid!());
     Client {
       uuid: format!("{}-{}", addr, name),
       name,

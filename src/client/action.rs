@@ -47,6 +47,7 @@ impl Execute for ListClient {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Action {
   UpdateName(UpdateName),
   ListClient(ListClient),
