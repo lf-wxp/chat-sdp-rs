@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::action::{Action, self};
-use crate::client::client::Client;
 use crate::response::ResponseMessage;
 use crate::transmit::{Transmit, TransmitExecute};
 use crate::{ClientMap, RoomMap};

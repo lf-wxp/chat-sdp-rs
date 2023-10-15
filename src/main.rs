@@ -30,8 +30,8 @@ mod room;
 mod transmit;
 mod response;
 
-use client::client::Client;
-use room::room::Room;
+use client::client_struct::Client;
+use room::room_struct::Room;
 use message::Execute;
 use response::{ResponseMessage, State};
 
@@ -121,7 +121,7 @@ async fn handle_connection(
 async fn main() -> Result<(), IoError> {
   let addr = env::args()
     .nth(1)
-    .unwrap_or_else(|| "127.0.0.1:8080".to_string());
+    .unwrap_or_else(|| "127.0.0.1:8888".to_string());
 
   let client_map = ClientMap::new(Mutex::new(HashMap::new()));
   let room_map = RoomMap::new(Mutex::new(HashMap::new()));

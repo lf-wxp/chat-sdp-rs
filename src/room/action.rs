@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{response::{State, ResponseMessage, Data}, RoomMap};
 
-use super::room::Room;
+use super::room_struct::Room;
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateRoom {
@@ -64,17 +64,17 @@ impl Execute for ListRoom {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
-  CreateRoom(CreateRoom),
-  RemoveRoom(RemoveRoom),
-  ListRoom(ListRoom),
+  Create(CreateRoom),
+  Remove(RemoveRoom),
+  List(ListRoom),
 }
 
 impl Execute for Action {
   fn execute(&self, room_map: RoomMap) -> ResponseMessage {
     match self {
-      Action::CreateRoom(create_room) => create_room.execute(room_map.clone()),
-      Action::RemoveRoom(remove_room) => remove_room.execute(room_map.clone()),
-      Action::ListRoom(list_room) => list_room.execute(room_map.clone()),
+      Action::Create(create_room) => create_room.execute(room_map.clone()),
+      Action::Remove(remove_room) => remove_room.execute(room_map.clone()),
+      Action::List(list_room) => list_room.execute(room_map.clone()),
     }
   }
 }

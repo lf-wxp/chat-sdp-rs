@@ -1,4 +1,4 @@
-use std::{net::SocketAddr};
+use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_tungstenite::tungstenite::Message;
@@ -39,7 +39,7 @@ pub struct ClientInfo {
 
 impl From<Client> for ClientInfo {
   fn from(client: Client) -> Self {
-    let Client {uuid, name, tx } = client;
+    let Client {uuid, name, tx: _ } = client;
     ClientInfo { name, uuid }
   }
 }

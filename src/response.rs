@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite;
 
-use crate::{room::room::Room};
-use crate::client::client::ClientInfo;
+use crate::room::room_struct::Room;
+use crate::client::client_struct::ClientInfo;
 
 #[derive(Serialize, Deserialize)]
 pub enum State {

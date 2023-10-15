@@ -5,7 +5,7 @@ use crate::{
   ClientMap,
 };
 
-use super::client::{Client, ClientInfo};
+use super::client_struct::ClientInfo;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UpdateName {
@@ -21,7 +21,7 @@ impl Execute for UpdateName {
       Ok(mut map) => match map.get_mut(&client_id) {
         Some(client) => {
           client.update_name(self.name.clone());
-          return ResponseMessage::new(State::success, "success".to_owned(), None);
+          ResponseMessage::new(State::success, "success".to_owned(), None)
         }
         None => ResponseMessage::new(State::error, "update client name".to_owned(), None),
       },
