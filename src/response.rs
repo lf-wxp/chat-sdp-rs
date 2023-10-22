@@ -4,20 +4,23 @@ use tokio_tungstenite::tungstenite;
 use crate::room::room_struct::Room;
 use crate::client::client_struct::ClientInfo;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum State {
   success,
   error,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Data {
   RoomList(Vec<Room>),
   ClientList(Vec<ClientInfo>),
+  ClientInfo(ClientInfo),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ResponseMessage {
   pub state: State,
   pub message: String,

@@ -1,10 +1,4 @@
-use std::{
-  collections::HashMap,
-  env,
-  io::Error as IoError,
-  net::SocketAddr,
-  sync::{Arc, Mutex},
-};
+use std::{env, io::Error as IoError, net::SocketAddr};
 
 use futures::{
   future::{self, Either},
@@ -25,25 +19,19 @@ use tokio_tungstenite::{
 
 mod action;
 mod client;
+mod data;
 mod message;
+mod response;
 mod room;
 mod transmit;
-mod response;
 
 use client::client_struct::Client;
-use room::room_struct::Room;
 use message::Execute;
 use response::{ResponseMessage, State};
 
-type ClientMap = Arc<Mutex<HashMap<String, Client>>>;
-type RoomMap = Arc<Mutex<HashMap<String, Room>>>;
+use crate::data::get_client_map;
 
-async fn handle_connection(
-  client_map: ClientMap,
-  room_map: RoomMap,
-  raw_stream: TcpStream,
-  addr: SocketAddr,
-) {
+async fn handle_connection(raw_stream: TcpStream, addr: SocketAddr) {
   println!("Incoming TCP connection from: {}", addr);
 
   let get_headers = |req: &Request, response: Response| {
@@ -65,14 +53,20 @@ async fn handle_connection(
   let client = Client::new(addr, None, tx);
   let uuid_key = client.uuid();
 
-  client_map.lock().unwrap().insert(uuid_key.clone(), client);
-
+  if let Some(client_map) = get_client_map() {
+    client_map.insert(uuid_key.clone(), client);
+  }
   let (sink, stream) = ws_stream.split();
 
   let (transform_tx, transform_rx) = unbounded_channel::<Message>();
 
   let message_tx = transform_tx.clone();
   let execute_message = stream.try_for_each(|msg| {
+    println!(
+      "Received a pure message from {}: {}",
+      addr,
+      msg.to_text().unwrap()
+    );
     let message = match serde_json::from_str::<message::Message>(msg.to_text().unwrap()) {
       Ok(message) => {
         println!(
@@ -80,7 +74,7 @@ async fn handle_connection(
           addr,
           msg.to_text().unwrap()
         );
-        message.execute(client_map.clone(), room_map.clone(), uuid_key.clone())
+        message.execute(uuid_key.clone())
       }
       Err(_) => ResponseMessage::new(State::error, "construct".to_owned(), None),
     };
@@ -114,7 +108,9 @@ async fn handle_connection(
   }
 
   println!("{} disconnected", &addr);
-  client_map.lock().unwrap().remove(&uuid_key);
+  if let Some(client_map) = get_client_map() {
+    client_map.remove(&uuid_key);
+  }
 }
 
 #[tokio::main]
@@ -123,20 +119,12 @@ async fn main() -> Result<(), IoError> {
     .nth(1)
     .unwrap_or_else(|| "127.0.0.1:8888".to_string());
 
-  let client_map = ClientMap::new(Mutex::new(HashMap::new()));
-  let room_map = RoomMap::new(Mutex::new(HashMap::new()));
-
   let try_socket = TcpListener::bind(&addr).await;
   let listener = try_socket.expect("Failed to bind");
   println!("Listening on: {}", addr);
 
   while let Ok((stream, addr)) = listener.accept().await {
-    tokio::spawn(handle_connection(
-      client_map.clone(),
-      room_map.clone(),
-      stream,
-      addr,
-    ));
+    tokio::spawn(handle_connection(stream, addr));
   }
 
   Ok(())

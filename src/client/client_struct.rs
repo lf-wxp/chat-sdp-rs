@@ -32,15 +32,16 @@ impl Client {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientInfo {
   name: String,
   uuid: String,
 }
 
-impl From<Client> for ClientInfo {
-  fn from(client: Client) -> Self {
+impl From<&Client> for ClientInfo {
+  fn from(client: &Client) -> Self {
     let Client {uuid, name, tx: _ } = client;
-    ClientInfo { name, uuid }
+    ClientInfo { name: name.to_string(), uuid: uuid.to_string() }
   }
 }
 

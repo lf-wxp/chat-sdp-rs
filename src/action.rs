@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::response::ResponseMessage;
-use crate::{room, ClientMap};
-use crate::{client, RoomMap};
+use crate::{
+  client::{self, action::ClientExecute},
+  response::ResponseMessage,
+  room::{self, action::RoomExecute},
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,20 +14,13 @@ pub enum Action {
 }
 
 impl Execute for Action {
-  fn execute(&self, room_map: RoomMap, client_map: ClientMap, client_id: String) -> ResponseMessage {
+  fn execute(&self, client_id: String) -> ResponseMessage {
     match self {
-      Action::Room(room_action) => match room_action {
-        room::action::Action::Create(create_room) => room::action::Execute::execute(create_room, room_map.clone()),
-        room::action::Action::Remove(remove_room) => room::action::Execute::execute(remove_room, room_map.clone()),
-        room::action::Action::List(list_room) => room::action::Execute::execute(list_room, room_map.clone()),
-      },
-      Action::Client(client_action) => match client_action {
-        client::action::Action::UpdateName(update_name) => client::action::Execute::execute(update_name, client_map.clone(), client_id),
-        client::action::Action::ListClient(list_client) => client::action::Execute::execute(list_client, client_map.clone(), client_id)
-      },
+      Action::Room(room_action) => room_action.execute(),
+      Action::Client(client_action) => client_action.execute(client_id),
     }
   }
 }
 pub trait Execute {
-  fn execute(&self, room_map: RoomMap, client_map: ClientMap, client_id: String) -> ResponseMessage;
+  fn execute(&self, client_id: String) -> ResponseMessage;
 }

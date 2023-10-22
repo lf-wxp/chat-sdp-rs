@@ -1,10 +1,14 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{response::{State, ResponseMessage, Data}, RoomMap};
+use crate::{
+  data::get_room_map,
+  response::{Data, ResponseMessage, State},
+};
 
 use super::room_struct::Room;
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRoom {
   name: String,
   desc: Option<String>,
@@ -12,51 +16,64 @@ pub struct CreateRoom {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoveRoom {
   uuid: String,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ListRoom; 
+#[serde(rename_all = "camelCase")]
+pub struct ListRoom;
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListRoomResponse {
   state: State,
   message: String,
   data: Vec<Room>,
 }
 
-impl Execute for CreateRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
+impl RoomExecute for CreateRoom {
+  fn execute(&self) -> ResponseMessage {
     let room = Room::new(
       self.name.to_owned(),
       self.desc.to_owned(),
       self.passwd.to_owned(),
     );
-    room_map.lock().unwrap().insert(room.uuid(), room);
-    ResponseMessage::new(State::success, "success".to_owned(), None)
-  }
-}
-
-impl Execute for RemoveRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
-    match room_map.lock().unwrap().remove(&self.uuid) {
-      Some(_) => ResponseMessage::new(State::success, "success".to_owned(), None),
-      None => ResponseMessage::new(State::error, "error remove room".to_owned(), None),
+    match get_room_map() {
+      Some(map) => {
+        map.insert(room.uuid(), room);
+        ResponseMessage::new(State::success, "success".to_owned(), None)
+      }
+      None => ResponseMessage::new(State::error, "create room error".to_owned(), None),
     }
   }
 }
 
-impl Execute for ListRoom {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
-    match room_map.lock() {
-      Ok(map) => {
+impl RoomExecute for RemoveRoom {
+  fn execute(&self) -> ResponseMessage {
+    let error = ResponseMessage::new(State::error, "remove room error".to_owned(), None);
+    match get_room_map() {
+      Some(map) => map.remove(&self.uuid).map_or(error.clone(), |_| {
+        ResponseMessage::new(State::success, "success".to_owned(), None)
+      }),
+      None => error,
+    }
+  }
+}
+
+impl RoomExecute for ListRoom {
+  fn execute(&self) -> ResponseMessage {
+    match get_room_map() {
+      Some(map) => {
         let list = map.values().cloned().collect::<Vec<Room>>();
-        ResponseMessage::new(State::success, "success".to_owned(), Some(Data::RoomList(list)))
-      },
-      Err(_) => {
-        ResponseMessage::new(State::error, "error list room".to_owned(), None)
-      },
+        ResponseMessage::new(
+          State::success,
+          "success".to_owned(),
+          Some(Data::RoomList(list)),
+        )
+      }
+      None => ResponseMessage::new(State::error, "error list room".to_owned(), None),
     }
   }
 }
@@ -69,16 +86,16 @@ pub enum Action {
   List(ListRoom),
 }
 
-impl Execute for Action {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage {
+impl RoomExecute for Action {
+  fn execute(&self) -> ResponseMessage {
     match self {
-      Action::Create(create_room) => create_room.execute(room_map.clone()),
-      Action::Remove(remove_room) => remove_room.execute(room_map.clone()),
-      Action::List(list_room) => list_room.execute(room_map.clone()),
+      Action::Create(create_room) => create_room.execute(),
+      Action::Remove(remove_room) => remove_room.execute(),
+      Action::List(list_room) => list_room.execute(),
     }
   }
 }
 
-pub trait Execute {
-  fn execute(&self, room_map: RoomMap) -> ResponseMessage;
+pub trait RoomExecute {
+  fn execute(&self) -> ResponseMessage;
 }
