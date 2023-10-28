@@ -19,17 +19,20 @@ use tokio_tungstenite::{
 
 mod action;
 mod client;
+mod connect;
 mod data;
 mod message;
 mod response;
 mod room;
 mod transmit;
 
-use client::client_struct::Client;
-use message::Execute;
-use response::{ResponseMessage, State};
-
-use crate::data::get_client_map;
+use {
+  client::client_struct::Client,
+  connect::{Connect, ConnectExecute},
+  data::get_client_map,
+  message::Execute,
+  response::{ResponseMessage, State},
+};
 
 async fn handle_connection(raw_stream: TcpStream, addr: SocketAddr) {
   println!("Incoming TCP connection from: {}", addr);
@@ -56,11 +59,15 @@ async fn handle_connection(raw_stream: TcpStream, addr: SocketAddr) {
   if let Some(client_map) = get_client_map() {
     client_map.insert(uuid_key.clone(), client);
   }
+
+  Connect {}.execute();
+
   let (sink, stream) = ws_stream.split();
 
   let (transform_tx, transform_rx) = unbounded_channel::<Message>();
 
   let message_tx = transform_tx.clone();
+
   let execute_message = stream.try_for_each(|msg| {
     println!(
       "Received a pure message from {}: {}",

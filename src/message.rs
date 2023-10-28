@@ -4,6 +4,7 @@ use crate::{
   action::{self, Action},
   response::ResponseMessage,
   transmit::{Transmit, TransmitExecute},
+  connect::{Connect, ConnectExecute},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -11,6 +12,7 @@ use crate::{
 pub enum Message {
   Action(Action),
   Transmit(Transmit),
+  Connect(Connect),
 }
 
 impl Execute for Message {
@@ -18,6 +20,7 @@ impl Execute for Message {
     match self {
       Message::Action(action) => action::Execute::execute(action, client_id),
       Message::Transmit(transmit) => transmit.execute(),
+      Message::Connect(connect) => connect.execute(),
     }
   }
 }

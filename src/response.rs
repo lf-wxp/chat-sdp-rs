@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite;
 
-use crate::room::room_struct::Room;
-use crate::client::client_struct::ClientInfo;
+use crate::{client::client_struct::ClientInfo, connect::ConnectInfo, room::room_struct::Room};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +16,7 @@ pub enum Data {
   RoomList(Vec<Room>),
   ClientList(Vec<ClientInfo>),
   ClientInfo(ClientInfo),
+  ConnectInfo(ConnectInfo),
 }
 
 #[derive(Serialize, Deserialize, Clone)]

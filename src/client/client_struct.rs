@@ -31,7 +31,7 @@ impl Client {
   }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientInfo {
   name: String,
