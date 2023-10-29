@@ -37,7 +37,12 @@ impl TransmitExecute for Broadcast {
 
         for recp in broadcast_recipients {
           if !self.message.is_empty() {
-            recp.tx.send(Message::Text(self.message.clone())).unwrap();
+            let message = serde_json::to_string(&TransmitMessage {
+              from: self.from.clone(),
+              message: self.message.clone(),
+            })
+            .unwrap();
+            recp.tx.send(Message::Text(message)).unwrap();
           };
         }
         ResponseMessage::new(State::success, "ok broadcast".to_owned(), None)
@@ -52,10 +57,12 @@ impl TransmitExecute for Unicast {
     match get_client_map() {
       Some(peers) => {
         let target_peer = peers.get(&self.to).unwrap();
-        target_peer
-          .tx
-          .send(Message::Text(self.message.clone()))
-          .unwrap();
+        let message = serde_json::to_string(&TransmitMessage {
+          from: self.from.clone(),
+          message: self.message.clone(),
+        })
+        .unwrap();
+        target_peer.tx.send(Message::Text(message)).unwrap();
 
         ResponseMessage::new(State::success, "ok unicast".to_owned(), None)
       }
@@ -78,6 +85,13 @@ impl TransmitExecute for Transmit {
       Transmit::Unicast(unicast) => unicast.execute(),
     }
   }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TransmitMessage {
+  from: String,
+  message: String,
 }
 
 pub trait TransmitExecute {
