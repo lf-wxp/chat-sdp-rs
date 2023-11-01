@@ -6,11 +6,31 @@ use crate::{
   response::{ResponseMessage, State},
 };
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum CallType {
+  Video,
+  Audio,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SdpMessage {
+  pub call_type: CallType,
+  pub sdp: String,
+}
+
+impl SdpMessage {
+  pub fn is_empty(&self) -> bool {
+    self.sdp.is_empty()
+  }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Broadcast {
   from: String,
-  message: String,
+  message: SdpMessage,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -18,7 +38,7 @@ pub struct Broadcast {
 pub struct Unicast {
   from: String,
   pub to: String,
-  message: String,
+  message: SdpMessage,
 }
 
 impl TransmitExecute for Broadcast {
@@ -91,7 +111,7 @@ impl TransmitExecute for Transmit {
 #[serde(rename_all = "camelCase")]
 pub struct TransmitMessage {
   from: String,
-  message: String,
+  message: SdpMessage,
 }
 
 pub trait TransmitExecute {
